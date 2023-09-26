@@ -1,160 +1,266 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import re # for regex
+
+# NLTK library
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 
 
-# C extensions
-*.so
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# Bag of Words
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB,MultinomialNB,BernoulliNB, CategoricalNB
+from sklearn.metrics import accuracy_score,precision_score,recall_score,confusion_matrix
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# Remove stop words
+from stopwordsiso import stopwords
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
+# stemming in greek
+from snowballstemmer import stemmer
 
-# Translations
-*.mo
-*.pot
+# create plots
+import matplotlib.pyplot as plt
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
 
-# Flask stuff:
-instance/
-.webassets-cache
+#####-------------------------Functions---------------------------#####
+# We clean up any HTML element that may lurk in our data
+def clean(text):
+    cleaned = re.compile(r'<.*?>')
+    return re.sub(cleaned, '', text)
 
-# Scrapy stuff:
-.scrapy
 
-# Sphinx documentation
-docs/_build/
+# Remove words that are contain symbols that are not
+# letters or numbers.
+def is_special1(text):
+    rem = ''
+    for i in text:
+        if i.isalnum() == False and i != " ":
+            text = text.replace(i, ' ')
+    return text
 
-# PyBuilder
-.pybuilder/
-target/
+# Remove numbers
+def remove_numbers(text):
+    text_without_numbers = re.sub(r'\d', '', text)
+    return text_without_numbers
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Transform text to lower case
+def to_lower(text):
+    text = text.lower()
+    return text
 
-# IPython
-profile_default/
-ipython_config.py
+def remove_acute_accents(text):
+    text = text.replace("ά", "α")
+    text = text.replace("έ", "ε")
+    text = text.replace("ή", "η")
+    text = text.replace("ί", "ι")
+    text = text.replace("ό", "ο")
+    text = text.replace("ύ", "υ")
+    text = text.replace("ώ", "ω")
+    return text
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+# Remove words with one or two letters length
+def remove_low_letter_words(text):
+    words = text.split()  # Split text into words
+    filtered_words = [word for word in words if len(word) > 2]  # Filter out one-letter words
+    processed_text = ' '.join(filtered_words)  # Join the filtered words back into a string
+    return processed_text
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
 
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
 
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/#use-with-ide
-.pdm.toml
+# Remove stopwords (i.e. words like the, as, if, that etc)
+def rem_stopwords(text):
+    stop_words = set(stopwords('el'))
+    words = word_tokenize(text)
+    return " ".join([w for w in words if w not in stop_words])
 
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
 
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
+# Remove RT,@,https for retweet
+def remove_rt(text):
+    return ' '.join([word for word in text.split() if not (word.startswith('RT') or word.startswith('@') or word.startswith('https'))])
 
-# SageMath parsed files
-*.sage.py
+# Performing text stemming
+def stem_txt(text):
+    words = word_tokenize(text)
+    ss = stemmer('greek')
+    return " ".join([ss.stemWord(w) for w in words])
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+#####---------------------------------MAIN CODE-----------------------------------------------#####
 
-# Spyder project settings
-.spyderproject
-.spyproject
 
-# Rope project settings
-.ropeproject
 
-# mkdocs documentation
-/site
+print("\n\n********************************\n** Naive Bayes Classification **\n********************************\n")
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
 
-# Pyre type checker
-.pyre/
+#####----- Importing CSV file -----#####
+##### The tweet text must be in a column named "tweet" and the sentiment on a column named "sentiment".
+##### We assumed that we will import a csv file
+print('Importing CSV files')
+all_tweets = pd.read_csv('YOUR CSV FILE.csv', delimiter=';', usecols=['tweet', 'sentiment'])
+print('done')
 
-# pytype static type analyzer
-.pytype/
 
-# Cython debug symbols
-cython_debug/
+#####----- Pre-processing -----#####
 
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+print("\tLower case....", end="")
+all_tweets.tweet = all_tweets.tweet.apply(to_lower)
+print("done")
+
+print("\tRemove acute accents", end="")
+all_tweets.tweet = all_tweets.tweet.apply(remove_acute_accents)
+print("done")
+
+print("\tCleaning html entities....", end="")
+all_tweets.tweet = all_tweets.tweet.apply(clean)
+print("done")
+
+print("\tRemove rt and names from users......", end="")
+all_tweets.tweet = all_tweets.tweet.apply(remove_rt)
+print( "done" )
+
+
+print("\tRemoving special characters....", end="")
+all_tweets.tweet = all_tweets.tweet.apply(is_special1)
+print("done")
+
+
+print("\tRemoving numbers....", end="")
+all_tweets.tweet = all_tweets.tweet.apply(remove_numbers)
+print("done")
+
+
+print("\tRemoving stopwords....", end="")
+all_tweets.tweet = all_tweets.tweet.apply(rem_stopwords)
+print( "done" )
+
+
+print("\tStemming....", end="")
+all_tweets.tweet = all_tweets.tweet.apply(stem_txt)
+print( "done" )
+
+
+#####----- Count Vectorize -----#####
+print("\tText Vectorization....", end="")
+y = all_tweets.sentiment.values
+cv = CountVectorizer(max_features = 2000)
+X= cv.fit_transform(all_tweets.tweet).toarray()
+cv_length = X.shape[1]
+print("done")
+
+# Perform sentiment analysis on each piece
+NBModel = MultinomialNB(alpha=1.0, fit_prior=True)
+
+print("Training multinomial model....", end="")
+trainx,testx,trainy,testy = train_test_split(X,y,test_size=0.2,random_state=9)
+NBModel.fit(trainx,trainy)
+print("done.")
+
+print("Predicting categories on the testing set.")
+
+# Use the testing set to do some predictions.
+ypm = NBModel.predict(testx)
+
+# Calculate some metrics: accuracy, precision and recall for
+# the testing set
+print("\tMultinomial accuracy = ",accuracy_score(testy,ypm))
+print("\tMultinomial precision= ",precision_score(testy,ypm, average=None))
+print("\tMultinomial recall= ",recall_score(testy,ypm, average=None))
+
+cm = confusion_matrix(testy,ypm)
+
+print("Confusion Matrix:")
+print(cm)
+
+print("Predicting categories on unknown data.")
+
+#####----- Import unknown data -----#####
+print("Import unknown data...", end="")
+csv_files = [ 'UNKNOWN DATA.csv']
+unknown_tweets = []
+for file in csv_files:
+    df = pd.read_csv(file, delimiter=';', usecols=['tweet'])
+    unknown_tweets.extend(df['tweet'].tolist())
+unknown_tweets = pd.DataFrame({'tweet': unknown_tweets}, columns=['tweet'])
+print('done')
+
+print("Shuffle randomly the unknown tweets...", end="")
+unknown_tweets = unknown_tweets.sample(frac=1, random_state=42).reset_index(drop=True)
+print('done')
+
+#####----- Pre-processing of Unknown Data -----####
+
+print("Pre-processing of unkown data")
+
+print("\tCleaning html entities....", end="")
+unknown_tweets.tweet = unknown_tweets.tweet.apply(clean)
+print("done")
+
+print("\tRemove rt and names from users......", end="")
+unknown_tweets.tweet = unknown_tweets.tweet.apply(remove_rt)
+print( "done" )
+
+print("\tRemoving special characters....", end="")
+unknown_tweets.tweet = unknown_tweets.tweet.apply(is_special1)
+print("done")
+
+print("\tRemoving numbers....", end="")
+unknown_tweets.tweet = unknown_tweets.tweet.apply(remove_numbers)
+print("done")
+
+print("\tLower case....", end="")
+unknown_tweets.tweet = unknown_tweets.tweet.apply(to_lower)
+print("done")
+
+print("\tRemove acute accents", end="")
+unknown_tweets.tweet = unknown_tweets.tweet.apply(remove_acute_accents)
+print("done")
+
+print("\tRemoving stopwords....", end="")
+unknown_tweets.tweet = unknown_tweets.tweet.apply(rem_stopwords)
+print( "done" )
+
+print("\tStemming....", end="")
+unknown_tweets.tweet = unknown_tweets.tweet.apply(stem_txt)
+print( "done" )
+
+#
+
+#####----- Count Vectorize -----#####
+print("\tText Vectorization....", end="")
+cv = CountVectorizer(max_features=cv_length)
+vectorized_tweets = cv.fit_transform(unknown_tweets.tweet).toarray()
+print("done")
+
+
+
+# Perform sentiment analysis on each piece
+sentiments = []
+NBModel.fit(trainx, trainy)
+predicted_sentiment = NBModel.predict(vectorized_tweets)
+sentiments.extend(predicted_sentiment)
+
+
+# Plot the sentiment distribution for all the unknown tweets
+sentiment_counts = pd.Series(sentiments).value_counts()
+sentiment_labels = sentiment_counts.index
+sentiment_values = sentiment_counts.values
+
+# Plot the sentiment distribution for all the unknown tweets
+sentiment_labels = ['positive' if label == 1 else 'negative' for label in sentiment_labels]
+
+plt.bar(sentiment_labels, sentiment_values, width=0.15,  linewidth=0.5)
+plt.xlabel('Sentiment')
+plt.ylabel('Number of Tweets')
+plt.show()
+
+# Create a DataFrame to count sentiment occurrences
+sentiment_counts = pd.Series(sentiments).value_counts()
+sentiment_table = pd.DataFrame({
+    'Sentiment': sentiment_counts.index,
+    'Count': sentiment_counts.values
+})
+
+# Print the sentiment table
+print(sentiment_table)
+
